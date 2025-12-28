@@ -1,12 +1,31 @@
 import Database, { type Database as DatabaseType } from 'better-sqlite3';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { existsSync, mkdirSync } from 'fs';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
+// Get database path from environment or use default
 const dbPath = process.env.DATABASE_PATH || path.join(__dirname, '../../chatbot.db');
-const db: DatabaseType = new Database(dbPath);
+
+// Ensure the directory exists for the database file
+const dbDir = path.dirname(dbPath);
+if (!existsSync(dbDir)) {
+  mkdirSync(dbDir, { recursive: true });
+}
+
+// Create database connection with error handling
+let db: DatabaseType;
+try {
+  db = new Database(dbPath);
+  // Test write access
+  db.pragma('journal_mode = WAL'); // Enable WAL mode for better concurrency
+} catch (error: any) {
+  console.error('Failed to initialize database:', error.message);
+  console.error('Database path:', dbPath);
+  throw new Error(`Database initialization failed: ${error.message}`);
+}
 
 // Enable foreign keys
 db.pragma('foreign_keys = ON');
