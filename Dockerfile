@@ -59,7 +59,7 @@ RUN npm ci --only=production
 COPY --from=backend-builder /app/backend/dist ./dist
 
 # Create data directory for database
-RUN mkdir -p /app/data
+RUN mkdir -p /app/data && chmod 777 /app/data
 
 # Setup frontend
 WORKDIR /app/frontend
@@ -73,26 +73,59 @@ RUN npm ci --only=production
 # Copy built frontend from builder
 COPY --from=frontend-builder /app/frontend/build ./build
 
-# Create startup script
+# Create startup script with better error handling
 WORKDIR /app
-RUN echo '#!/bin/sh\n\
-cd /app/backend && node dist/index.js &\n\
-cd /app/frontend && node build/index.js &\n\
-wait' > /app/start.sh && chmod +x /app/start.sh
+RUN cat > /app/start-concurrent.sh << 'EOF'
+#!/bin/sh
+set -e
 
-# Alternative: Use concurrently (already installed)
-RUN echo '#!/bin/sh\n\
-cd /app && concurrently --kill-others-on-fail \
-  "cd backend && PORT=3001 node dist/index.js" \
-  "cd frontend && PORT=3000 node build/index.js"' > /app/start-concurrent.sh && chmod +x /app/start-concurrent.sh
+# Use Render's PORT if set, otherwise use defaults
+FRONTEND_PORT=${PORT:-${FRONTEND_PORT:-3000}}
+BACKEND_PORT=${BACKEND_PORT:-3001}
+
+echo "=== Starting Application ==="
+echo "NODE_ENV: ${NODE_ENV:-production}"
+echo "Backend PORT: ${BACKEND_PORT}"
+echo "Frontend PORT: ${FRONTEND_PORT}"
+echo "Database path: ${DATABASE_PATH:-/app/data/chatbot.db}"
+
+# Verify build outputs exist
+echo "Verifying build outputs..."
+if [ ! -f "/app/backend/dist/index.js" ]; then
+  echo "ERROR: Backend build not found at /app/backend/dist/index.js"
+  ls -la /app/backend/dist/ || echo "Backend dist directory does not exist"
+  exit 1
+fi
+echo "✓ Backend build found"
+
+if [ ! -f "/app/frontend/build/index.js" ]; then
+  echo "ERROR: Frontend build not found at /app/frontend/build/index.js"
+  ls -la /app/frontend/build/ || echo "Frontend build directory does not exist"
+  exit 1
+fi
+echo "✓ Frontend build found"
+
+# Ensure database directory exists and is writable
+mkdir -p /app/data
+chmod 777 /app/data
+echo "✓ Database directory ready"
+
+# Start services with concurrently
+echo "Starting services..."
+cd /app && exec concurrently --kill-others-on-fail --raw \
+  "cd /app/backend && PORT=${BACKEND_PORT} DATABASE_PATH=${DATABASE_PATH:-/app/data/chatbot.db} node dist/index.js" \
+  "cd /app/frontend && PORT=${FRONTEND_PORT} node build/index.js"
+EOF
+RUN chmod +x /app/start-concurrent.sh
 
 # Expose ports
 EXPOSE 3001 3000
 
 # Set environment variables
 ENV NODE_ENV=production
-ENV PORT=3001
+ENV BACKEND_PORT=3001
 ENV FRONTEND_PORT=3000
+ENV DATABASE_PATH=/app/data/chatbot.db
 
 # Health check (checks backend)
 HEALTHCHECK --interval=30s --timeout=3s --start-period=10s --retries=3 \
