@@ -14,7 +14,8 @@ RUN npm ci
 
 # Copy source code
 COPY src ./src
-COPY static ./static 2>/dev/null || true
+# Copy static directory (now always exists, even if empty)
+COPY static ./static
 
 # Build the application
 RUN npm run build

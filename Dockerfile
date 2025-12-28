@@ -32,7 +32,8 @@ RUN npm ci
 
 # Copy frontend source code
 COPY frontend/src ./src
-COPY frontend/static ./static 2>/dev/null || true
+# Copy static directory (now always exists, even if empty)
+COPY frontend/static ./static
 
 # Build frontend
 RUN npm run build
