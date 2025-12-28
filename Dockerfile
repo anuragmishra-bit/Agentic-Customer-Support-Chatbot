@@ -35,6 +35,11 @@ COPY frontend/src ./src
 # Copy static directory (now always exists, even if empty)
 COPY frontend/static ./static
 
+# Build frontend with API URL (defaults to localhost:3001 for same-container deployment)
+# This can be overridden with build arg if needed
+ARG VITE_API_URL=http://localhost:3001
+ENV VITE_API_URL=${VITE_API_URL}
+
 # Build frontend
 RUN npm run build
 
@@ -74,14 +79,26 @@ RUN npm ci --only=production
 COPY --from=frontend-builder /app/frontend/build ./build
 
 # Create startup script with better error handling
+# Note: Linter warnings about "Unknown instruction" are false positives - 
+# the heredoc (<< 'EOF') contains shell script, not Dockerfile instructions
 WORKDIR /app
 RUN cat > /app/start-concurrent.sh << 'EOF'
 #!/bin/sh
 set -e
 
-# Use Render's PORT if set, otherwise use defaults
+# Port configuration:
+# - Frontend uses Render's PORT (if set) or FRONTEND_PORT or default 3000
+# - Backend always uses 3001 (frontend is built with VITE_API_URL pointing to localhost:3001)
 FRONTEND_PORT=${PORT:-${FRONTEND_PORT:-3000}}
-BACKEND_PORT=${BACKEND_PORT:-3001}
+BACKEND_PORT=3001
+
+# Check for port conflict
+if [ "$FRONTEND_PORT" = "$BACKEND_PORT" ]; then
+  echo "ERROR: Port conflict! Frontend and backend cannot both use port $FRONTEND_PORT"
+  echo "Please set PORT environment variable to a different value (e.g., 3000, 8080, etc.)"
+  echo "Backend must use port 3001 (frontend is built expecting backend on localhost:3001)"
+  exit 1
+fi
 
 echo "=== Starting Application ==="
 echo "NODE_ENV: ${NODE_ENV:-production}"
