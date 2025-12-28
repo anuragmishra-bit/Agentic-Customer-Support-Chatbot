@@ -49,10 +49,11 @@ System architecture and design decisions for the AI Customer Support Chatbot.
 - Provides statistics
 
 **LLMService:**
-- Integrates with Google Gemini API
-- Manages conversation context
-- Handles prompt construction
-- Error handling and fallbacks
+- Integrates with Google Gemini API (model: `gemini-2.5-flash`)
+- Manages conversation context (last 10 messages)
+- Handles prompt construction with domain knowledge (shipping, returns, support hours)
+- Error handling and fallbacks (timeouts, rate limits, invalid keys)
+- Token management (max 500 tokens, 2000 char message limit)
 
 ## Frontend Architecture
 
@@ -149,6 +150,27 @@ CREATE TABLE messages (
 - Request size limits
 - Efficient SQL queries
 - Optimistic UI updates
+
+## LLM Integration
+
+### Provider: Google Gemini
+- **Model:** `gemini-2.5-flash`
+- **API:** Google Generative AI SDK (`@google/generative-ai`)
+- **Configuration:** Via `GEMINI_API_KEY` environment variable
+
+### Prompt Design
+The LLM receives:
+1. **System Context:** Domain knowledge about SpurStore (shipping, returns, support hours)
+2. **Conversation History:** Last 10 messages formatted as Customer/Support Agent dialogue
+3. **Current Message:** User's current question
+
+### Error Handling
+- Invalid API key → User-friendly error message
+- Rate limit exceeded → "Please try again in a moment"
+- Timeout → "Request timed out. Please try again."
+- Generic errors → Fallback friendly message
+
+See [README.md](README.md#-llm-integration) for detailed LLM documentation.
 
 ## Future Improvements
 

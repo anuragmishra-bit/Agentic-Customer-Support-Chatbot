@@ -64,10 +64,19 @@ VITE_API_URL=http://localhost:3001
 
 ### 3. Initialize Database
 
+The database is automatically initialized when the backend server starts for the first time. However, you can also initialize it manually:
+
 ```bash
 cd backend
 npm run migrate
 ```
+
+This creates:
+- `conversations` table - Stores conversation sessions
+- `messages` table - Stores all user and AI messages
+- Indexes for efficient queries
+
+**Note:** The database file (`chatbot.db` by default) will be created automatically in the backend directory on first run.
 
 ### 4. Start Development Servers
 
