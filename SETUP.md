@@ -1,50 +1,111 @@
-# Quick Setup Guide
+# Setup Guide
+
+Detailed instructions for setting up the AI Customer Support Chatbot.
 
 ## Prerequisites
-- Node.js 18+ installed
-- npm installed
-- Gemini API key from [Google AI Studio](https://aistudio.google.com/apikey)
 
-## Setup Steps
+- **Node.js 18+** and npm
+- **Google Gemini API key** ([Get one here](https://aistudio.google.com/apikey))
 
-1. **Install all dependencies:**
-   ```bash
-   npm run install:all
-   ```
+## Quick Setup (Recommended)
 
-2. **Configure environment:**
-   ```bash
-   cd backend
-   cp .env.example .env
-   ```
-   
-   Edit `backend/.env` and add your Gemini API key:
-   ```env
-   GEMINI_API_KEY=your_actual_api_key_here
-   ```
+Use the automated startup script:
 
-3. **Initialize database:**
-   ```bash
-   cd backend
-   npm run migrate
-   ```
+```bash
+npm start
+```
 
-4. **Start the application:**
-   ```bash
-   # From root directory
-   npm run dev
-   ```
-   
-   Or run separately:
-   - Backend: `cd backend && npm run dev` (runs on port 3001)
-   - Frontend: `cd frontend && npm run dev` (runs on port 5173)
+This handles everything automatically. On first run, you'll need to:
+1. Add your `GEMINI_API_KEY` to `backend/.env`
+2. Restart the script
 
-5. **Open in browser:**
-   Navigate to `http://localhost:5173`
+## Manual Setup
+
+### 1. Install Dependencies
+
+```bash
+# Install all dependencies
+npm run install:all
+
+# Or install separately
+npm install
+cd backend && npm install
+cd ../frontend && npm install
+```
+
+### 2. Environment Variables
+
+**Backend:**
+```bash
+cd backend
+cp .env.example .env
+```
+
+Edit `backend/.env`:
+```env
+PORT=3001
+NODE_ENV=development
+GEMINI_API_KEY=your_gemini_api_key_here
+DATABASE_PATH=./chatbot.db
+FRONTEND_URL=http://localhost:5173
+API_KEY=your_secure_api_key_here
+```
+
+**Frontend:**
+```bash
+cd frontend
+cp .env.example .env
+```
+
+Edit `frontend/.env`:
+```env
+VITE_API_URL=http://localhost:3001
+```
+
+### 3. Initialize Database
+
+```bash
+cd backend
+npm run migrate
+```
+
+### 4. Start Development Servers
+
+**Option A: Using the startup script**
+```bash
+npm start
+```
+
+**Option B: Manual start**
+```bash
+# Terminal 1 - Backend
+cd backend
+npm run dev
+
+# Terminal 2 - Frontend
+cd frontend
+npm run dev
+```
+
+## Access the Application
+
+- **Frontend:** http://localhost:5173
+- **Backend API:** http://localhost:3001
+- **Health Check:** http://localhost:3001/health
 
 ## Troubleshooting
 
-- **"GEMINI_API_KEY not set"**: Make sure you created `.env` file in the `backend` directory
-- **Port already in use**: Change `PORT` in `backend/.env` or kill the process using the port
-- **Database errors**: Delete `backend/chatbot.db` and run `npm run migrate` again
+### Backend won't start
+- Check that `GEMINI_API_KEY` is set in `backend/.env`
+- Ensure port 3001 is not in use
+- Run `npm run migrate` to initialize database
+
+### Frontend can't connect
+- Verify backend is running on port 3001
+- Check `VITE_API_URL` in `frontend/.env`
+- Check CORS settings in backend
+
+### Database errors
+- Delete `backend/chatbot.db` and run `npm run migrate` again
+- Ensure write permissions in backend directory
 

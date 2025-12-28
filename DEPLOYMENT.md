@@ -1,242 +1,101 @@
 # Deployment Guide
 
-This guide covers deploying the chatbot to free open-source hosting platforms.
+Deployment instructions for Docker and cloud platforms.
 
-## 🚀 Quick Deploy Options
+## Docker Deployment
 
-### Option 1: Render.com (Recommended for Free Tier)
+### Using Docker Compose (Recommended)
 
-1. **Fork this repository** to your GitHub account
-
-2. **Create a new Web Service on Render:**
-   - Go to [Render Dashboard](https://dashboard.render.com)
-   - Click "New +" → "Web Service"
-   - Connect your GitHub repository
-   - Select the repository
-
-3. **Backend Deployment:**
-   - **Name:** `chatbot-backend`
-   - **Environment:** `Node`
-   - **Build Command:** `cd backend && npm install && npm run build`
-   - **Start Command:** `cd backend && npm start`
-   - **Environment Variables:**
-     ```
-     NODE_ENV=production
-     PORT=3001
-     GEMINI_API_KEY=your_gemini_api_key_here
-     DATABASE_PATH=./chatbot.db
-     FRONTEND_URL=https://your-frontend-url.onrender.com
-     API_KEY=generate_a_secure_random_string
-     ```
-   - **Health Check Path:** `/health`
-
-4. **Frontend Deployment:**
-   - Create another Web Service
-   - **Name:** `chatbot-frontend`
-   - **Environment:** `Node`
-   - **Build Command:** `cd frontend && npm install && npm run build`
-   - **Start Command:** `cd frontend && npm start`
-   - **Environment Variables:**
-     ```
-     NODE_ENV=production
-     PORT=3000
-     VITE_API_URL=https://your-backend-url.onrender.com
-     ```
-   - **Health Check Path:** `/health`
-
-5. **Update URLs:**
-   - After backend deploys, update `FRONTEND_URL` in backend env vars
-   - Update `VITE_API_URL` in frontend env vars with backend URL
-
-### Option 2: Railway.app
-
-1. **Fork this repository** to your GitHub account
-
-2. **Create a new project on Railway:**
-   - Go to [Railway Dashboard](https://railway.app)
-   - Click "New Project" → "Deploy from GitHub repo"
-   - Select your repository
-
-3. **Backend Service:**
-   - Railway will auto-detect Node.js
-   - Add environment variables (same as Render)
-   - Set root directory to `/backend` in service settings
-   - Railway will use the `railway.json` config
-
-4. **Frontend Service:**
-   - Add another service
-   - Set root directory to `/frontend`
-   - Add environment variables
-
-### Option 3: Fly.io
-
-1. **Install Fly CLI:**
-   ```bash
-   curl -L https://fly.io/install.sh | sh
-   ```
-
-2. **Backend:**
+1. **Set up environment:**
    ```bash
    cd backend
-   fly launch
-   # Follow prompts, set environment variables
-   fly deploy
+   cp .env.example .env
+   # Edit .env and set GEMINI_API_KEY
    ```
 
-3. **Frontend:**
+2. **Start services:**
    ```bash
-   cd frontend
-   fly launch
-   # Set VITE_API_URL to backend URL
-   fly deploy
+   docker-compose up --build
    ```
 
-### Option 4: Vercel (Frontend) + Render (Backend)
+3. **Access:**
+   - Frontend: http://localhost:5173
+   - Backend: http://localhost:3001
 
-**Frontend on Vercel:**
-1. Import project from GitHub
-2. Set root directory to `frontend`
-3. Add environment variable: `VITE_API_URL`
-4. Vercel will auto-detect SvelteKit
+### Individual Docker Containers
 
-**Backend on Render:**
-- Follow Render backend steps above
+**Backend:**
+```bash
+cd backend
+docker build -t chatbot-backend .
+docker run -p 3001:3001 \
+  -e GEMINI_API_KEY=your_key \
+  -e FRONTEND_URL=http://localhost:5173 \
+  -e DATABASE_PATH=/app/data/chatbot.db \
+  -v backend-data:/app/data \
+  chatbot-backend
+```
 
-## 📋 Environment Variables Checklist
+**Frontend:**
+```bash
+cd frontend
+docker build -t chatbot-frontend .
+docker run -p 5173:3000 \
+  -e VITE_API_URL=http://localhost:3001 \
+  chatbot-frontend
+```
 
-### Backend
-- [ ] `GEMINI_API_KEY` - Your Google Gemini API key
-- [ ] `FRONTEND_URL` - Your frontend domain (for CORS)
-- [ ] `API_KEY` - Secure random string for data endpoints
-- [ ] `PORT` - Usually auto-set by platform
-- [ ] `NODE_ENV=production`
-- [ ] `DATABASE_PATH` - Path to SQLite file (or use PostgreSQL)
+## Cloud Deployment
 
-### Frontend
-- [ ] `VITE_API_URL` - Your backend API URL
-- [ ] `PORT` - Usually auto-set by platform
-- [ ] `NODE_ENV=production`
+### Environment Variables
 
-## 🔧 Platform-Specific Notes
+**Backend:**
+- `GEMINI_API_KEY` (required)
+- `FRONTEND_URL` (for CORS)
+- `API_KEY` (for data endpoints)
+- `DATABASE_PATH` (default: `./chatbot.db`)
+- `PORT` (auto-set by platform)
 
-### Render.com
-- ✅ Free tier available
-- ✅ Automatic HTTPS
-- ✅ Custom domains
-- ⚠️ Services sleep after 15 min inactivity (free tier)
-- ⚠️ SQLite may have issues with ephemeral storage
+**Frontend:**
+- `VITE_API_URL` (backend URL)
+- `PORT` (auto-set by platform)
 
-### Railway.app
-- ✅ Free tier with $5 credit/month
-- ✅ Automatic HTTPS
-- ✅ Persistent volumes available
-- ✅ Better for SQLite (persistent storage)
+### Platform-Specific Notes
 
-### Fly.io
-- ✅ Generous free tier
-- ✅ Global edge network
-- ✅ Persistent volumes
-- ⚠️ Requires CLI setup
+**Render.com:**
+- Use Web Service for both backend and frontend
+- SQLite data may be lost on restart (ephemeral filesystem)
+- Consider PostgreSQL for production
 
-### Vercel
-- ✅ Excellent for frontend
-- ✅ Automatic HTTPS
-- ✅ Global CDN
-- ⚠️ Serverless functions (not ideal for backend with SQLite)
+**Railway.app:**
+- Auto-detects Node.js
+- Supports persistent volumes for SQLite
+- Better for SQLite than Render
 
-## 🗄️ Database Considerations
+**Fly.io:**
+- Use `fly launch` for each service
+- Supports persistent volumes
+- Global edge network
 
-### SQLite (Current)
-- ✅ Works for small deployments
-- ✅ No additional setup needed
-- ⚠️ Not ideal for concurrent writes
-- ⚠️ File system dependencies
+**Vercel (Frontend only):**
+- Excellent SvelteKit support
+- Automatic deployments
+- Use separate backend hosting
 
-### PostgreSQL (Recommended for Production)
-If you need better performance:
+## Production Considerations
 
-1. **Add PostgreSQL dependency:**
-   ```bash
-   cd backend
-   npm install pg
-   ```
+1. **Database:** Use PostgreSQL instead of SQLite for production
+2. **Environment Variables:** Secure all API keys
+3. **CORS:** Configure `FRONTEND_URL` correctly
+4. **Rate Limiting:** Already configured (100 req/15min)
+5. **Health Checks:** Both services have `/health` endpoints
 
-2. **Update database.ts** to use PostgreSQL connection
+## Docker Compose Configuration
 
-3. **Use managed PostgreSQL:**
-   - Render: Add PostgreSQL database
-   - Railway: Add PostgreSQL service
-   - Fly.io: Use Supabase or Neon
-
-## 🔒 Security Checklist
-
-- [x] CORS configured with environment variables
-- [x] Rate limiting enabled
-- [x] API key authentication for data endpoints
-- [x] Input validation with Zod
-- [x] SQL injection protection (parameterized queries)
-- [ ] HTTPS enforced (automatic on most platforms)
-- [ ] Environment variables secured (never commit)
-
-## 🧪 Testing Deployment
-
-1. **Check Health Endpoint:**
-   ```bash
-   curl https://your-backend-url.com/health
-   ```
-
-2. **Test Chat Endpoint:**
-   ```bash
-   curl -X POST https://your-backend-url.com/chat/message \
-     -H "Content-Type: application/json" \
-     -d '{"message": "Hello"}'
-   ```
-
-3. **Test Data Endpoint (with API key):**
-   ```bash
-   curl https://your-backend-url.com/data/stats \
-     -H "X-API-Key: your_api_key"
-   ```
-
-## 🐛 Troubleshooting
-
-### Backend won't start
-- Check all environment variables are set
-- Verify `GEMINI_API_KEY` is valid
-- Check build logs for TypeScript errors
-- Ensure database path is writable
-
-### Frontend can't connect to backend
-- Verify `VITE_API_URL` is correct
-- Check CORS settings in backend
-- Ensure backend is running and accessible
-
-### Database errors
-- On Render: SQLite may not persist (use PostgreSQL)
-- On Railway: Use persistent volume
-- Check file permissions
-
-### Rate limiting issues
-- Adjust rate limit settings in `backend/src/index.ts`
-- Check if IP is being shared (common on free tiers)
-
-## 📚 Additional Resources
-
-- [Render Documentation](https://render.com/docs)
-- [Railway Documentation](https://docs.railway.app)
-- [Fly.io Documentation](https://fly.io/docs)
-- [Vercel Documentation](https://vercel.com/docs)
-
-## 🎯 Recommended Setup for Demo
-
-**Best combination for free tier:**
-- **Backend:** Railway.app (better SQLite support)
-- **Frontend:** Vercel (excellent SvelteKit support)
-
-This gives you:
-- ✅ Persistent database
-- ✅ Fast frontend with CDN
-- ✅ Automatic HTTPS
-- ✅ Custom domains
-- ✅ No sleeping services
+The `docker-compose.yml` includes:
+- Multi-stage builds for optimization
+- Health checks for both services
+- Persistent volume for database
+- Environment variable configuration
+- Automatic restart policies
 
